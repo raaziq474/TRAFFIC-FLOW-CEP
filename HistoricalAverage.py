@@ -35,21 +35,30 @@ class TrafficPredictor:
         return timestamp.hour * TrafficPredictor.SAMPLES_PER_HOUR + (timestamp.minute // TrafficPredictor.SAMPLE_RATE)
     
 
+    @staticmethod
+    def time_slot_to_string(time_slot: int) -> str:
+        """Convert time slot index to human-readable time string"""
+
+        hour = int(time_slot // TrafficPredictor.SAMPLES_PER_HOUR)
+        minute = int((time_slot % TrafficPredictor.SAMPLES_PER_HOUR) * TrafficPredictor.SAMPLE_RATE)
+        return f"{hour:02d}:{minute:02d}"
+
+
     def _accumulate_speeds(self) -> Tuple[Dict, Dict]:
         """Add observed speedss and counts for each (day, time_slot, sensor) combination"""
 
-        totals = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
-        counts = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+        speed_totals = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
+        day_count = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
         
         for sensor_id in self.df.columns:
             for timestamp, speed in zip(self.df.index, self.df[sensor_id]):
                 day_name = timestamp.strftime("%A")
                 time_slot = self._get_time_slot(timestamp)
                 
-                totals[day_name][time_slot][sensor_id] += float(speed)
-                counts[day_name][time_slot][sensor_id] += 1
+                speed_totals[day_name][time_slot][sensor_id] += float(speed)
+                day_count[day_name][time_slot][sensor_id] += 1
                 
-        return totals, counts
+        return speed_totals, day_count
     
 
     def _compute_averages(self, sums: Dict, counts: Dict) -> Dict:
@@ -88,15 +97,6 @@ class TrafficPredictor:
         prediction = self.days_averages[day][time_slot].get(sensor_id, 0.0)
         return prediction
     
-
-    @staticmethod
-    def time_slot_to_string(time_slot: int) -> str:
-        """Convert time slot index to human-readable time string"""
-
-        hour = int(time_slot // TrafficPredictor.SAMPLES_PER_HOUR)
-        minute = int((time_slot % TrafficPredictor.SAMPLES_PER_HOUR) * TrafficPredictor.SAMPLE_RATE)
-        return f"{hour:02d}:{minute:02d}"
-
 
 def main():
 
