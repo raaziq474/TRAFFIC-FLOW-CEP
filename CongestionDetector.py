@@ -55,15 +55,15 @@ class CongestionDetector:
 
 
     def detect_events(self) -> pd.DataFrame:
-        """Detects consecutive time intervals where speed is below 50 mph."""
+        """Detects consecutive time intervals where speed is below 65 mph."""
         events = []
 
         # Iterate over each sensor
         for sensor_id in self.df.columns:
             
             # Probaby need to change 
-            is_congested = self.df[sensor_id] < 50
-
+            is_congested = self.df[sensor_id] < 65
+            
             # Group consecutive True values (congested periods)
             groups = (is_congested != is_congested.shift()).cumsum()
             congested_groups = self.df[is_congested].groupby(groups[is_congested])
