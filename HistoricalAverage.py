@@ -1,11 +1,11 @@
 from tsl.datasets import MetrLA
 import pandas as pd
-from collections import defaultdict
-from typing import Dict, Tuple
+from collections import defaultdict 
 from datetime import datetime
+import numpy as np
 
 
-class TrafficPredictor:
+class HistoricalAverageTraffic:
     """Traffic Predcition based on historical day-of-week and time-of-day averages."""
     
     SAMPLE_RATE = 5
@@ -15,7 +15,7 @@ class TrafficPredictor:
     def __init__(self, df: pd.DataFrame):
 
         self.df = self._preprocess_dataframe(df)
-        self.days_averages = None
+        self.speed_statistics = None
 
 
     @staticmethod
@@ -32,69 +32,78 @@ class TrafficPredictor:
     def _get_time_slot(timestamp: datetime) -> int:
         """Convert timestamp to 5-minute time slot index (0-287)"""
 
-        return timestamp.hour * TrafficPredictor.SAMPLES_PER_HOUR + (timestamp.minute // TrafficPredictor.SAMPLE_RATE)
+        time_slot = timestamp.hour * HistoricalAverageTraffic.SAMPLES_PER_HOUR + (timestamp.minute // HistoricalAverageTraffic.SAMPLE_RATE)
+        return time_slot
     
 
     @staticmethod
     def time_slot_to_string(time_slot: int) -> str:
         """Convert time slot index to human-readable time string"""
 
-        hour = int(time_slot // TrafficPredictor.SAMPLES_PER_HOUR)
-        minute = int((time_slot % TrafficPredictor.SAMPLES_PER_HOUR) * TrafficPredictor.SAMPLE_RATE)
+        hour = int(time_slot // HistoricalAverageTraffic.SAMPLES_PER_HOUR)
+        minute = int((time_slot % HistoricalAverageTraffic.SAMPLES_PER_HOUR) * HistoricalAverageTraffic.SAMPLE_RATE)
         return f"{hour:02d}:{minute:02d}"
 
 
-    def _accumulate_speeds(self) -> Tuple[Dict, Dict]:
-        """Add observed speedss and counts for each (day, time_slot, sensor) combination"""
-
-        speed_totals = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
-        day_count = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+    def _accumulate_speeds(self) -> list:
+        """Store lists of speeds for each (day, time_slot, sensor) combination"""
         
+        speeds = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))    # day -> time slot -> sensor -> speed 
+
         for sensor_id in self.df.columns:
             for timestamp, speed in zip(self.df.index, self.df[sensor_id]):
-                day_name = timestamp.strftime("%A")
+
+                day_name = timestamp.strftime("%A")                             # Extract day as string eg. "Monday"
                 time_slot = self._get_time_slot(timestamp)
-                
-                speed_totals[day_name][time_slot][sensor_id] += float(speed)
-                day_count[day_name][time_slot][sensor_id] += 1
-                
-        return speed_totals, day_count
-    
+                speeds[day_name][time_slot][sensor_id].append(float(speed))
 
-    def _compute_averages(self, sums: Dict, counts: Dict) -> Dict:
-        """Compute average speeds from accumulated sums and counts."""
+        return speeds
 
-        averages = defaultdict(lambda: defaultdict(dict))
+
+    def _compute_statistics(self, speeds) -> dict:
+        """Compute mean, stdev, min, max, lower, upper."""
         
-        for day_name in sums:
-            for time_slot in sums[day_name]:
-                for sensor_id in sums[day_name][time_slot]:
+        results = defaultdict(lambda: defaultdict(dict))
+
+        for day in speeds:
+            for time_slot in speeds[day]:
+                for sensor, values in speeds[day][time_slot].items():
                     
-                    total_speed = sums[day_name][time_slot][sensor_id]
-                    count = counts[day_name][time_slot][sensor_id]
+                    if len(values) == 0:
+                        return None
                     
-                    avg_speed = total_speed / count if count > 0 else 0.0
-                    averages[day_name][time_slot][sensor_id] = avg_speed
-                    
-        return averages
+                    arr = np.array(values)
+                    results[day][time_slot][sensor] = {
+                        "mean": arr.mean(),
+                        "stdev": arr.std(),
+                        "lower": arr.mean() - arr.std(),
+                        "upper": arr.mean() + arr.std(),
+                        "min": arr.min(),
+                        "max": arr.max()
+                    }
+
+        return results
     
 
     def train(self) -> None:
-        """Train the predictor by computing historical averages."""
+        """Train the predictor by computing historical averages"""
 
-        sums, counts = self._accumulate_speeds()
-        self.days_averages = self._compute_averages(sums, counts)
-        print("Computed Averages")
+        speeds = self._accumulate_speeds()
+        self.speed_statistics = self._compute_statistics(speeds)
+        print("Finished training")
         
 
-    def predict(self, day: str, time_slot: int, sensor_id: str) -> float:
-        """ Predict traffic speed for a given day, time, and sensor"""
+    def predict_distribution(self, day: str, time_slot: str | int, sensor_id: str) -> dict:
+        """Predict traffic speed for a given day, time, and sensor"""
 
-        # Could probably take hour/min as arg and convert to time slot 
-        if self.days_averages is None:
-            raise ValueError("Predictor must be trained before making predictions. Call train() first.")
+        if self.speed_statistics is None:
+            raise ValueError("Predictor must be trained before making predictions. Call train() first")
         
-        prediction = self.days_averages[day][time_slot].get(sensor_id, 0.0)
+        if isinstance(time_slot, str):
+            datetime = pd.to_datetime(time_slot)            # convert string to datetime
+            time_slot = self._get_time_slot(datetime)       # use date time to get time slot 
+
+        prediction = self.speed_statistics[day][time_slot][sensor_id]
         return prediction
     
 
@@ -103,26 +112,27 @@ def main():
     # Load dataset
     dataset = MetrLA(impute_zeros=True)
     df: pd.DataFrame = dataset.target
-
+    
     print(f"Dataset loaded: {len(df)} records, {len(df.columns)} sensors")
     print(f"Date range: {df.index[0]} to {df.index[-1]}")
 
-    predictor = TrafficPredictor(df)
+    predictor = HistoricalAverageTraffic(df)
     predictor.train()
 
     # example prediction
-    day = "Monday"
-    time_slot = 144  # 12:00 PM
+    day = "Thursday"
+    time = "12:30" # can provide either hour/minute or time slot 
     sensor_id = "767509"
     
-    prediction = predictor.predict(day, time_slot, sensor_id)
-    time_str = TrafficPredictor.time_slot_to_string(time_slot)
+    prediction = predictor.predict_distribution(day, time, sensor_id)
     
     print(f"Prediction Results")
-    print(f"Day:        {day}")
-    print(f"Time:       {time_str} (slot {time_slot})")
-    print(f"Sensor:     {sensor_id}")
-    print(f"Predicted:  {prediction:.2f} mph")
+    print(f"Day: {day}")
+    print(f"Time: {time} (slot {time})")
+    print(f"Sensor: {sensor_id}")
+    
+    for key, value in prediction.items():
+        print(f"{key}: {value}")
 
 
 if __name__ == "__main__":
