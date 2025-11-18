@@ -3,13 +3,14 @@ import pandas as pd
 from collections import defaultdict 
 from datetime import datetime
 import numpy as np
+from tqdm import tqdm
 
 
 class HistoricalAverageTraffic:
     """Traffic Predcition based on historical day-of-week and time-of-day averages."""
     
     SAMPLE_RATE = 5
-    SAMPLES_PER_HOUR = 60 / SAMPLE_RATE
+    SAMPLES_PER_HOUR = 60 // SAMPLE_RATE
     SAMPLES_PER_DAY = 24 * SAMPLES_PER_HOUR
     
     def __init__(self, df: pd.DataFrame):
@@ -45,18 +46,24 @@ class HistoricalAverageTraffic:
         return f"{hour:02d}:{minute:02d}"
 
 
-    def _accumulate_speeds(self) -> list:
+    def _accumulate_speeds(self) -> dict:
         """Store lists of speeds for each (day, time_slot, sensor) combination"""
+        speeds = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
         
-        speeds = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))    # day -> time slot -> sensor -> speed 
-
+        total_iterations = len(self.df.columns) * len(self.df.index)    # sensors * timesteps 
+        
+        # Update less frequently using mininterval
+        pbar = tqdm(total=total_iterations, desc="Accumulating speeds", mininterval=0.5)
+        
         for sensor_id in self.df.columns:
             for timestamp, speed in zip(self.df.index, self.df[sensor_id]):
 
-                day_name = timestamp.strftime("%A")                             # Extract day as string eg. "Monday"
+                day_name = timestamp.strftime("%A")
                 time_slot = self._get_time_slot(timestamp)
                 speeds[day_name][time_slot][sensor_id].append(float(speed))
-
+                pbar.update(1)
+        
+        pbar.close()
         return speeds
 
 
@@ -64,33 +71,41 @@ class HistoricalAverageTraffic:
         """Compute mean, stdev, min, max, lower, upper."""
         
         results = defaultdict(lambda: defaultdict(dict))
+        
+        # Calculate total iterations
+        total_iterations = len(speeds) * self.SAMPLES_PER_DAY * len(self.df.columns)    # Days * Time slots * Sensors 
 
+        pbar = tqdm(total=total_iterations, desc="Computing Sensor Statistics")
+        
         for day in speeds:
             for time_slot in speeds[day]:
                 for sensor, values in speeds[day][time_slot].items():
                     
                     if len(values) == 0:
+                        pbar.close()
                         return None
                     
                     arr = np.array(values)
-                    results[day][time_slot][sensor] = {
+                    results[day][time_slot][sensor] = {     # could add custom stats 
                         "mean": arr.mean(),
+                        "median": np.median(arr),
                         "stdev": arr.std(),
-                        "lower": arr.mean() - arr.std(),
-                        "upper": arr.mean() + arr.std(),
                         "min": arr.min(),
                         "max": arr.max()
                     }
-
+                    pbar.update(1)
+        
+        pbar.close()
         return results
     
 
     def train(self) -> None:
-        """Train the predictor by computing historical averages"""
+        """'Train' the predictor by segmenting sensor values between day and time and computing a distribution on them"""
 
+        print("Computing Historical Averages...")
         speeds = self._accumulate_speeds()
         self.speed_statistics = self._compute_statistics(speeds)
-        print("Finished training")
+        print("Finished Training")
         
 
     def predict_distribution(self, day: str, time_slot: str | int, sensor_id: str) -> dict:
@@ -109,7 +124,6 @@ class HistoricalAverageTraffic:
 
 def main():
 
-    # Load dataset
     dataset = MetrLA(impute_zeros=True)
     df: pd.DataFrame = dataset.target
     
@@ -126,9 +140,9 @@ def main():
     
     prediction = predictor.predict_distribution(day, time, sensor_id)
     
-    print(f"Prediction Results")
+    print(f"\nPrediction Results")
     print(f"Day: {day}")
-    print(f"Time: {time} (slot {time})")
+    print(f"Time: {time}")
     print(f"Sensor: {sensor_id}")
     
     for key, value in prediction.items():

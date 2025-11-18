@@ -2,11 +2,11 @@ import pandas as pd
 from tsl.datasets import MetrLA
 from typing import Dict, Any, List
 from EventClassifier import EventClassifier
-
+from HistoricalAverage import HistoricalAverageTraffic
 
 class CongestionDetector:
 
-    def __init__(self, data_df: pd.DataFrame, min_duration: int = 3):
+    def __init__(self, data: pd.DataFrame, min_duration: int = 3):
         """
         Initializes the detector with the speed data.
         
@@ -15,7 +15,7 @@ class CongestionDetector:
             min_duration: Minimum number of consecutive intervals (5-minute) 
                           to qualify as a congestion event.
         """
-        self.df = data_df
+        self.df = data
         self.min_duration = min_duration
         self.events_df: pd.DataFrame = pd.DataFrame()
         
@@ -55,16 +55,38 @@ class CongestionDetector:
 
 
     def detect_events(self) -> pd.DataFrame:
-        """Detects consecutive time intervals where speed is below 65 mph."""
+        """Detects events where speed is below (mean - stdev) for each sensor."""
+
         events = []
+
+        # Train predictor once
+        predictor = HistoricalAverageTraffic(self.df)
+        predictor.train()
 
         # Iterate over each sensor
         for sensor_id in self.df.columns:
-            
-            # Probaby need to change 
-            is_congested = self.df[sensor_id] < 65
-            
-            # Group consecutive True values (congested periods)
+
+            is_congested = []
+
+            # Build a boolean series for this sensor based on historical thresholds
+            for timestamp, speed in zip(self.df.index, self.df[sensor_id]):
+
+                day_name = timestamp.strftime("%A")
+                time_slot = predictor._get_time_slot(timestamp)
+
+                stats = predictor.predict_distribution(day_name, time_slot, sensor_id)
+
+                mean = stats["mean"]
+                stdev = stats["stdev"]
+
+                # Congestion is defined as being slower than (mean - stdev)
+                threshold = mean - stdev
+
+                is_congested.append(speed < threshold)
+
+            is_congested = pd.Series(is_congested, index=self.df.index)
+
+            # Group consecutive congestion periods (True values)
             groups = (is_congested != is_congested.shift()).cumsum()
             congested_groups = self.df[is_congested].groupby(groups[is_congested])
 
@@ -72,11 +94,11 @@ class CongestionDetector:
             for _, group in congested_groups:
                 start_time = group.index[0]
                 end_time = group.index[-1]
-                
-                self._add_event(events, sensor_id, start_time, end_time)    
+
+                self._add_event(events, sensor_id, start_time, end_time)
 
         self.events_df = pd.DataFrame(events)
-        print(f"\nDetected {len(self.events_df)} total raw congestion events.")
+        print(f"\nDetected {len(self.events_df)} congestion events.")
         return self.events_df
 
 

@@ -1,9 +1,10 @@
 from typing import Dict, Optional
 import pandas as pd
 
+
 class EventClassifier:
     """Handles the classification logic for event types"""
-
+    
     @staticmethod
     def _classify_time_period(timestamp: pd.Timestamp) -> str:
         """Classifies the timestamp into morning_peak, evening_peak, or off_peak."""
