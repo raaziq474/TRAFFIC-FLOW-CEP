@@ -5,6 +5,7 @@ from EventClassifier import EventClassifier
 from HistoricalAverage import HistoricalAverageTraffic
 from tqdm import tqdm
 
+
 class CongestionDetector:
 
     def __init__(self, data: pd.DataFrame, min_duration: int = 3):
@@ -152,5 +153,5 @@ if __name__ == "__main__":
     events_df = detector.run_pipeline()
     
     if not events_df.empty:
-        events_df.to_csv("basic_congestion_events.csv", index=False)
-        print("Saved events to basic_congestion_events.csv")
+        events_df.to_csv("congestion_events.csv", index=False)
+        print("Saved events to congestion_events.csv")

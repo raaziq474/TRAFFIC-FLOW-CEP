@@ -6,6 +6,28 @@ class EventClassifier:
     """Handles the classification logic for event types"""
     
     @staticmethod
+    def _classify_severity(speed: float, day_stats: dict) -> Optional[str]:
+        """Classifies congestion severity based on average speed,
+           uses min max normalization and threshold based system"""
+        
+        day_min = day_stats["min"]
+        day_max = day_stats["max"]
+        
+        if day_max == day_min:     # Avoid division by zero if sensor down entire day
+            return None
+
+        # Normalize speed to 0 (min) - 1 (max)
+        norm_speed = (speed - day_min) / (day_max - day_min)
+
+        if norm_speed < 0.33:
+            return "heavy"
+        elif norm_speed < 0.66:
+            return "moderate"
+        else:           # norm_speed < 1.0
+            return "light"
+
+
+    @staticmethod
     def _classify_time_period(timestamp: pd.Timestamp) -> str:
         """Classifies the timestamp into morning_peak, evening_peak, or off_peak."""
 
@@ -17,31 +39,6 @@ class EventClassifier:
             return "evening_peak"
         else:
             return "off_peak"
-
-
-
-    @staticmethod
-    def _classify_severity(speed: float, day_stats: dict) -> Optional[str]:
-        """Classifies congestion severity based on average speed,
-           uses min max normalization and threshold based system"""
-        
-        day_min = day_stats["min"]
-        day_max = day_stats["max"]
-        
-        if day_max == day_min:     # Avoid division by zero if sensor down entire day (maybe ?)
-            return None
-
-        # Normalize speed to 0 (min) - 1 (max)
-        norm_speed = (speed - day_min) / (day_max - day_min)
-
-        if norm_speed < 0.33:
-            return "heavy"
-        elif norm_speed < 0.66:
-            return "moderate"
-        elif norm_speed < 1.0:
-            return "light"
-        else:
-            return None  # No congestion
 
 
     @staticmethod
@@ -56,6 +53,7 @@ class EventClassifier:
         else:
             return "long"
     
+
     @staticmethod
     def _classify_day_of_week(date_time: pd.Timestamp) -> str:
         """Classifies event based on the day of week"""
@@ -68,6 +66,7 @@ class EventClassifier:
         """
         Classifies the event into severity, duration_type, and time_period.
         """
+
         severity = EventClassifier._classify_severity(speed, day_stats)
         
         if severity is None:

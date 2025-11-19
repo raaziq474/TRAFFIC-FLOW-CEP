@@ -98,12 +98,10 @@ class HistoricalAverageTraffic:
     def train(self) -> None:
         """'Train' the predictor by segmenting sensor values between day and time and computing a distribution on them"""
 
-        print("Computing Historical Averages...")
         speeds = self._accumulate_speeds()
         self.speed_statistics = self._compute_statistics(speeds)
-        print("Finished Training")
-        
 
+        
     def predict_distribution(self, day: str | datetime, time_slot: str | int | datetime, sensor_id: str) -> dict:
         """Predict traffic speed for a given day, time, and sensor"""
 
@@ -187,8 +185,6 @@ def main():
     
     for key, value in prediction.items():
         print(f"{key}: {value}")
-
-
 
 
 if __name__ == "__main__":
