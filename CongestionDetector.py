@@ -10,14 +10,14 @@ from CongestionChainDetector import CongestionChainDetector
 
 class CongestionDetector:
 
-    def __init__(self, data: pd.DataFrame, adj_matrix: np.ndarray = None, min_duration: int = 3):
+    def __init__(self, data: pd.DataFrame, adj_matrix: np.ndarray = None, min_duration: int = 15):
         """
         Initializes the detector with the speed data.
         
         Args:
             data: DataFrame where index is time and columns are sensor IDs (speed data).
             adj_matrix: Adjacency matrix for sensor connectivity (optional, for causality detection)
-            min_duration: Minimum number of consecutive intervals (5-minute) 
+            min_duration: Minimum number of consecutive intervals ( in minutes) 
                           to qualify as a congestion event.
         """
         self.df = data

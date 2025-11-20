@@ -25,7 +25,7 @@ class EventClassifier:
         elif norm_speed < 0.66:
             return "moderate"
         else:
-            return "light"       # norm_speed < 1.0
+            return "light"       # norm_speed only slightly lower than day max 
 
 
     @staticmethod

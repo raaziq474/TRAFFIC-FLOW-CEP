@@ -51,14 +51,14 @@ class CongestionChainDetector:
             
             cause_idx = sensor_to_idx[cause_sensor]
             
-            # Define time window for effects
-            effect_start = cause_event['end_time']
-            effect_end = effect_start + pd.Timedelta(minutes=time_window_minutes)
+            # Define time window for effects: from cause start to cause end + buffer
+            window_start = cause_event['start_time']
+            window_end = cause_event['end_time'] + pd.Timedelta(minutes=time_window_minutes)
             
-            # Find candidate effect events
+            # Candidate effect events starting within this window
             candidates = events[
-                (events['start_time'] >= effect_start) &
-                (events['start_time'] <= effect_end)
+                (events['start_time'] >= window_start) &
+                (events['start_time'] <= window_end)
             ]
             
             # Check each candidate for connectivity
@@ -73,7 +73,7 @@ class CongestionChainDetector:
                 
                 # Record event if connectivity greater than threshold
                 if conn_strength > min_connectivity:
-                    time_delay = (effect_event['start_time'] - cause_event['end_time']).total_seconds() / 60
+                    time_delay = (effect_event['start_time'] - cause_event['start_time']).total_seconds() / 60
                     
                     causal_relationships.append({
                         'cause_event_id': cause_event['event_id'],
@@ -148,15 +148,15 @@ class CongestionChainDetector:
 
         print(f"\nTotal causal relationships identified: {len(causal_df)}")
 
-        print(f"\nTop 10 Most Causally Active Sensors (as cause):")
+        print(f"\nTop 10 Most Causally Active Sensors:")
         cause_counts = causal_df['cause_sensor'].value_counts().head(10)
         for sensor, count in cause_counts.items():
-            print(f"  Sensor {sensor}: {count} downstream events")
+            print(f"  Sensor {sensor}: {count} cause events")
         
-        print(f"\nTop 10 Most Affected Sensors (as effect):")
+        print(f"\nTop 10 Most Affected Sensors:")
         effect_counts = causal_df['effect_sensor'].value_counts().head(10)
         for sensor, count in effect_counts.items():
-            print(f"  Sensor {sensor}: {count} upstream causes")
+            print(f"  Sensor {sensor}: {count} affected event")
         
         print(f"\nSeverity Propagation:")
         severity_pairs = causal_df.groupby(['cause_severity', 'effect_severity']).size()
