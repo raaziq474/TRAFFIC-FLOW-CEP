@@ -19,12 +19,13 @@ class EventClassifier:
         # Normalize speed to 0 (min) - 1 (max)
         norm_speed = (speed - day_min) / (day_max - day_min)
 
+        # Classify based on normalized percentage 
         if norm_speed < 0.33:
             return "heavy"
         elif norm_speed < 0.66:
             return "moderate"
-        else:           # norm_speed < 1.0
-            return "light"
+        else:
+            return "light"       # norm_speed < 1.0
 
 
     @staticmethod

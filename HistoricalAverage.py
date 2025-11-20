@@ -53,7 +53,8 @@ class HistoricalAverageTraffic:
         total_iterations = len(self.df.columns) * len(self.df.index)    # sensors * timesteps 
         
         # Update less frequently using mininterval
-        pbar = tqdm(total=total_iterations, desc="Accumulating speeds", mininterval=0.5)
+        print("Segmenting Sensors according to day and time")
+        pbar = tqdm(total=total_iterations, desc="Segmenting", mininterval=0.5)
         
         for sensor_id in self.df.columns:
             for timestamp, speed in zip(self.df.index, self.df[sensor_id]):
@@ -61,6 +62,7 @@ class HistoricalAverageTraffic:
                 day_name = timestamp.strftime("%A")
                 time_slot = self._get_time_slot(timestamp)
                 speeds[day_name][time_slot][sensor_id].append(float(speed))
+                
                 pbar.update(1)
         
         pbar.close()
