@@ -32,6 +32,7 @@ class EventClassifier:
     def _classify_time_period(timestamp: pd.Timestamp) -> str:
         """Classifies the timestamp into morning_peak, evening_peak, or off_peak."""
 
+        # TODO: Deterrmine usual times where sensor observes congestion and classify accordingly 
         hour = timestamp.hour
         
         if 6 <= hour < 10:
@@ -74,12 +75,12 @@ class EventClassifier:
             return None # No congestion - might need to change 
         
         duration_type = EventClassifier._classify_duration(duration_intervals)
-        time_period = EventClassifier._classify_time_period(start_time)
+        #time_period = EventClassifier._classify_time_period(start_time)
         day_of_week = EventClassifier._classify_day_of_week(start_time)
         
         return {
             "severity": severity,
             "duration_type": duration_type,
-            "time_period": time_period,
+            #"time_period": time_period,
             "day_of_week": day_of_week
         }

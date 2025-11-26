@@ -44,7 +44,7 @@ class HistoricalAverageTraffic:
         hour = int(time_slot // HistoricalAverageTraffic.SAMPLES_PER_HOUR)
         minute = int((time_slot % HistoricalAverageTraffic.SAMPLES_PER_HOUR) * HistoricalAverageTraffic.SAMPLE_RATE)
         return f"{hour:02d}:{minute:02d}"
-
+    
 
     def _accumulate_speeds(self) -> dict:
         """Store lists of speeds for each (day, time_slot, sensor) combination"""
@@ -175,10 +175,10 @@ def main():
 
     # example prediction
     day = "Thursday"
-    time = "12:30" # can provide either hour/minute or time slot 
+    time = "12:30"          # can provide either hour/minute or time slot 
     sensor_id = "767509"
     
-    prediction = predictor.predict_day_distribution(day, sensor_id)
+    prediction = predictor.predict_distribution(day, time, sensor_id)
     
     print(f"\nPrediction Results")
     print(f"Day: {day}")

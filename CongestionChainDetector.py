@@ -87,7 +87,9 @@ class CongestionChainDetector:
                         'time_delay_minutes': time_delay,
                         'connectivity_strength': conn_strength,
                         'cause_severity': cause_event.get('severity', 'unknown'),
-                        'effect_severity': effect_event.get('severity', 'unknown')
+                        'effect_severity': effect_event.get('severity', 'unknown'),
+                        'start_day': cause_event["start_time"].strftime("%A"),
+                        'end_day': effect_event["start_time"].strftime("%A")
                     })
         
         return pd.DataFrame(causal_relationships)
