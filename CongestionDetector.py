@@ -17,7 +17,7 @@ class CongestionDetector:
         Args:
             data: DataFrame where index is time and columns are sensor IDs (speed data).
             adj_matrix: Adjacency matrix for sensor connectivity (optional, for causality detection)
-            min_duration: Minimum number of consecutive intervals ( in minutes) 
+            min_duration: Minimum number of consecutive intervals (in minutes) 
                           to qualify as a congestion event.
         """
         self.df = data
@@ -181,7 +181,7 @@ class CongestionDetector:
             min_connectivity=min_connectivity
         )
         
-        # Analyze chains: Not useful at the moment, can save to csv?
+        # Analyze chains: Not useful at the moment
         if not causal_df.empty:
             chains = CongestionChainDetector.analyze_causal_chains(causal_df, max_depth=5)   # length of chain limited to dfs max depth
             print(f"\nFound {len(chains)} causal chains")      
@@ -220,10 +220,12 @@ if __name__ == "__main__":
     detector = CongestionDetector(df, adj_matrix=adj, min_duration=15)
     events_df = detector.run_pipeline()
     
+    SAVE_FOLDER = "data"
+
     if not events_df.empty:
-        events_df.to_csv("congestion_events.csv", index=False)
-        print("\nSaved events to congestion_events.csv")
+        events_df.to_csv(f"{SAVE_FOLDER}/congestion_events.csv", index=False)
+        print("\nSaved events to data/congestion_events.csv")
     
     if not detector.causal_df.empty:
-        detector.causal_df.to_csv("event_chains.csv", index=False)
-        print("Saved chains events to event_chains.csv")   
+        detector.causal_df.to_csv(f"{SAVE_FOLDER}/event_chains.csv", index=False)
+        print("Saved chains events to data/event_chains.csv")   

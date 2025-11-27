@@ -3,3 +3,7 @@
 /report
 /old
 /other
+/multi
+*.pt
+*.txt
+/plots
