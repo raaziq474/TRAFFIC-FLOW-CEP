@@ -34,16 +34,12 @@ GWNET_HPARAMS = {
 }
 
 
-# -----------------------------
-# Load and Prepare Data (Same as previous steps)
-# -----------------------------
+# Load Dataset 
 label_generator = EventLabelGenerator(events_csv="data/congestion_events.csv")
 speeds, labels, sensor_ids, num_classes = label_generator.run()
 T, N = speeds.shape
 
-# -----------------------------
-# 70 / 15 / 15 SPLIT
-# -----------------------------
+# Split dataset and labels into partitions 
 train_ratio = 0.70
 val_ratio = 0.15
 test_ratio = 0.15
@@ -73,13 +69,11 @@ loader_train = DataLoader(dataset_train, batch_size=BATCH_SIZE, shuffle=True, dr
 loader_val   = DataLoader(dataset_val, batch_size=BATCH_SIZE, shuffle=False)
 loader_test  = DataLoader(dataset_test, batch_size=BATCH_SIZE, shuffle=False)
 
-# -----------------------------
-# Model Initialization
-# -----------------------------
-
+## Can pass distance predefined adj matrix to gwnet
 # A = dataset.compute_similarity(method="distance", threshold=0.1)  # (N, N)
 # A = torch.tensor(A, dtype=torch.float32).to(device)
 # supports = [A] 
+
 
 model = GWNetClassifier(
     device=device,
@@ -89,17 +83,14 @@ model = GWNetClassifier(
     **GWNET_HPARAMS
 ).to(device)
 
+
 opt = torch.optim.Adam(model.parameters(), lr=LR)
 loss_fn = nn.CrossEntropyLoss()
-
-print(f"\nStarted Training GWNet Classifier:")
-
-# -----------------------------
-# Training Loop
-# -----------------------------
 best_val_loss = float('inf')
 model_name = f"{MODELS_FOLDER}/gwnet_classifier_best_{HISTORY_WINDOW}_{FUTURE_STEPS}.pt"
 
+
+print(f"\nStarted Training GWNet Classifier:")
 for epoch in range(EPOCHS):
     # TRAIN
     model.train()
@@ -149,10 +140,8 @@ for epoch in range(EPOCHS):
 print(f"\nBest validation loss: {best_val_loss:.4f}")
 print(f"Model saved to {model_name}")
 
-# -----------------------------
-# FINAL TEST EVALUATION
-# -----------------------------
-print("\n--- Running final TEST evaluation ---")
+
+print("\nRunning final TEST evaluation")
 model.load_state_dict(torch.load(model_name, weights_only=False))
 model.eval()
 
