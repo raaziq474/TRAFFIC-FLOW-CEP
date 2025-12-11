@@ -1,10 +1,9 @@
-from tsl.datasets import MetrLA
 import pandas as pd
 from collections import defaultdict 
 from datetime import datetime
 import numpy as np
 from tqdm import tqdm
-
+import data_utils
 
 class HistoricalAverageTraffic:
     """Traffic Predcition based on historical day-of-week and time-of-day averages."""
@@ -15,19 +14,9 @@ class HistoricalAverageTraffic:
     
     def __init__(self, df: pd.DataFrame):
 
-        self.df = self._preprocess_dataframe(df)
+        self.df = df
         self.speed_statistics = None
 
-
-    @staticmethod
-    def _preprocess_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-        
-        # Handle tuple column names for sensor_id (sensor_id, 0)
-        if isinstance(df.columns[0], tuple):
-            df.columns = [col[0] for col in df.columns]
-            
-        return df
-    
 
     @staticmethod
     def _get_time_slot(timestamp: datetime) -> int:
@@ -52,9 +41,8 @@ class HistoricalAverageTraffic:
         
         total_iterations = len(self.df.columns) * len(self.df.index)    # sensors * timesteps 
         
-        # Update less frequently using mininterval
-        print("Segmenting Sensors according to day and time")
-        pbar = tqdm(total=total_iterations, desc="Segmenting", mininterval=0.5)
+        print("\nTraining ...")
+        pbar = tqdm(total=total_iterations, desc="Segmenting Sensors", mininterval=0.5)
         
         for sensor_id in self.df.columns:
             for timestamp, speed in zip(self.df.index, self.df[sensor_id]):
@@ -77,7 +65,7 @@ class HistoricalAverageTraffic:
         # Days * Time slots * Sensors 
         total_iterations = len(speeds) * self.SAMPLES_PER_DAY * len(self.df.columns)    
 
-        pbar = tqdm(total=total_iterations, desc="Computing Sensor Statistics")
+        pbar = tqdm(total=total_iterations, desc="Computing Sensor Stats")
         
         for day in speeds:
             for time_slot in speeds[day]:
@@ -97,14 +85,55 @@ class HistoricalAverageTraffic:
         return results
     
 
+    def _compute_daily_statistics(self) -> dict:
+        """Precompute per-day aggregated stats for each sensor"""
+
+        daily_stats = defaultdict(lambda: defaultdict(dict))
+
+        total_iterations = len(self.speed_statistics) * len(self.df.columns)
+        pbar = tqdm(total=total_iterations, desc="Computing Daily Sensor Stats", mininterval=0.5)
+
+        for day in self.speed_statistics:
+            for sensor_id in self.df.columns:
+                stats = {
+                    "mean": [],
+                    "median": [],
+                    "stdev": [],
+                    "min": [],
+                    "max": []
+                }
+
+                for time_slot in self.speed_statistics[day]:
+                    if sensor_id in self.speed_statistics[day][time_slot]:
+                        s = self.speed_statistics[day][time_slot][sensor_id]
+                        for key in stats:
+                            stats[key].append(s[key])
+
+                # Store only if data exists
+                if stats["mean"]:
+                    daily_stats[day][sensor_id] = {
+                        "mean": float(np.mean(stats["mean"])),
+                        "median": float(np.mean(stats["median"])),
+                        "stdev": float(np.mean(stats["stdev"])),
+                        "min": float(np.min(stats["min"])),
+                        "max": float(np.max(stats["max"]))
+                    }
+
+                pbar.update(1)
+
+        pbar.close()
+        return daily_stats
+
+
     def train(self) -> None:
         """'Train' the predictor by segmenting sensor values between day and time and computing a distribution on them"""
 
         speeds = self._accumulate_speeds()
         self.speed_statistics = self._compute_statistics(speeds)
-
+        self.daily_statistics = self._compute_daily_statistics()
         
-    def predict_distribution(self, day: str | datetime, time_slot: str | int | datetime, sensor_id: str) -> dict:
+
+    def predict_timestep_distribution(self, day: str | datetime, time_slot: str | int | datetime, sensor_id: str) -> dict:
         """Predict traffic speed for a given day, time, and sensor"""
 
         if self.speed_statistics is None:
@@ -131,41 +160,15 @@ class HistoricalAverageTraffic:
             raise ValueError("Predictor must be trained before making predictions. Call train() first")
 
         if isinstance(day, datetime):
-            day = day.strftime("%A")                    # get day name if day is timestamp 
+            day = day.strftime("%A")
 
-        # these statistics must already be defined in the _compute_statistices()
-        statistics = {
-            "mean": [],
-            "median": [],
-            "stdev": [],
-            "min": [],
-            "max": []
-        }
-
-        # Collect all distributions across the day
-        for time_slot in self.speed_statistics[day]:
-            if sensor_id in self.speed_statistics[day][time_slot]:
-                stats = self.speed_statistics[day][time_slot][sensor_id]
-
-                for key in statistics:
-                    statistics[key].append(stats[key])
-
-        # Aggregate the statistics across the full day
-        return {
-            "mean": float(np.mean(statistics["mean"])),
-            "median": float(np.mean(statistics["median"])),
-            "stdev": float(np.mean(statistics["stdev"])),
-            "min": float(np.min(statistics["min"])),
-            "max": float(np.max(statistics["max"]))
-        }
+        return self.daily_statistics[day][sensor_id]
 
     
-
 def main():
 
-    # example usage using historical average traffic preditor
-    dataset = MetrLA(impute_zeros=True)
-    df: pd.DataFrame = dataset.target
+    # example usage using historical average traffic predictor
+    df: pd.DataFrame = data_utils.load_csv("la")
     
     print(f"Dataset loaded: {len(df)} records, {len(df.columns)} sensors")
     print(f"Date range: {df.index[0]} to {df.index[-1]}")
@@ -178,7 +181,7 @@ def main():
     time = "12:30"          # can provide either hour/minute or time slot 
     sensor_id = "767509"
     
-    prediction = predictor.predict_distribution(day, time, sensor_id)
+    prediction = predictor.predict_timestep_distribution(day, time, sensor_id)
     
     print(f"\nPrediction Results")
     print(f"Day: {day}")

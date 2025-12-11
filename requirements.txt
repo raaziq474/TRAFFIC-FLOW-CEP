@@ -1,4 +1,7 @@
 pandas
 numpy
 tqdm
-tsl # https://torch-spatiotemporal.readthedocs.io/en/latest/
+tsl             # https://torch-spatiotemporal.readthedocs.io/en/latest/ [optional, for downloading datasets]
+omegaconf 
+hydra-core
+torch

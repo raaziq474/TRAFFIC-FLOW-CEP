@@ -1,0 +1,42 @@
+defaults:
+  - _self_
+  - model: gwnet
+
+#### Experiment params ########################################################
+#### Need to rework this 
+hydra:
+  run:
+    dir: logs/${model.name}/${dataset.name}/${now:%Y-%m-%d-%H-%M-%S}
+
+#seed: 42
+
+dataset:
+  name: la              # Need to manually implement others (refer to Readme!)
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+
+tags:
+  - 'traffic'
+  - ${model.name}
+
+logger: null
+experiment_type: train  # train | test (not implemented yet)
+
+#### Windowing params #########################################################
+window: 12              # number of timesteps model takes as input (average traffic speed)
+horizon: 12             # model will only predict a single time step at horizon steps ahead (congestion label)
+
+#### Training params ##########################################################
+epochs: 30
+patience: 3
+batch_size: 64
+grad_clip_val: 5
+scale_target: True      # Normalization 
+
+#### Hyper prameters ##########################################################
+optimizer:
+  name: Adam
+  hparams:
+    lr: 0.002
+    weight_decay: 0

@@ -1,0 +1,9 @@
+# @package _global_
+
+#### Model params #############################################################
+model:
+  name: d2stgnn
+  hparams:
+    None: None 
+
+dataset:

@@ -3,7 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# GWNET Taken Directly from original paper: https://github.com/nnzhan/Graph-WaveNet
+# GWNET Taken Directly from original implementation with some modifications to use latest version of pytorch 
+# https://github.com/nnzhan/Graph-WaveNet
 
 
 class nconv(nn.Module):

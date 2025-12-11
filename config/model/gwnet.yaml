@@ -1,0 +1,24 @@
+# @package _global_
+
+#### Model params #############################################################
+model:
+  name: gwnet
+  hparams:
+    residual_channels: 32
+    dilation_channels: 32
+    skip_channels: 256
+    end_channels: 512
+    blocks: 2
+    layers: 4
+    dropout: 0.3
+    kernel_size: 2
+
+#### Config overrides ######################################################### 
+#### Still need to implement predefined adj for classifaction : support = [adj]
+dataset:
+  connectivity:
+    threshold: 0.1
+    include_self: False
+    normalize_axis: 1
+    layout: edge_index      # csr == random adjacecny init | edge_index == distance predefined
+

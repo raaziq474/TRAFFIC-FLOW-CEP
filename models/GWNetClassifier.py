@@ -11,7 +11,7 @@ class GWNetClassifier(nn.Module):
             device=device,
             num_nodes=num_nodes,
             in_dim=1,               # Average Speed is stil the only input feature
-            out_dim=1,              # Since classification only one horizon is predicted
+            out_dim=1,              # Since classification, only one horizon is predicted
             **kwargs
         )
         
@@ -34,7 +34,10 @@ class GWNetClassifier(nn.Module):
         h = F.relu(self.end_conv_1(h))
         out = self.end_conv_2_cls(h)
 
-        # Reshape to (B, N, num_classes) - reshape to produce prediction matching labels/loss function and remove time dimension 
-        # Cross Entropy Loss used, so raw logits passed
-        # torch complains if contiguous left out, sometimes throws error for large windows and horizons (48w -> 48h) maybe VRAM issue?
-        return out.squeeze(-1).permute(0, 2, 1).contiguous() 
+        # out shape: (B, num_classes, N, T)
+        out = self.end_conv_2_cls(h)       
+        out = out.mean(dim=-1)       # remove time dimension safely
+
+        # torch complains if contiguous left out, sometimes throws error for large windows and horizons (48w -> 48h)
+        # if very large window, timestep increases in dimension
+        return out.permute(0, 2, 1).contiguous()

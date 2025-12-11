@@ -1,0 +1,19 @@
+# @package _global_
+
+#### Model params #############################################################
+model:
+  name: tcn
+  hparams:
+    hidden_size: 32
+    kernel_size: 3
+    dropout: 0
+
+#### Overrides Hyper prameters #################################################
+optimizer:
+  name: Adam
+  hparams:
+    lr: 0.003
+    weight_decay: 0
+
+dataset:
+  None: None

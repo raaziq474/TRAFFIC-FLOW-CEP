@@ -7,3 +7,5 @@
 *.pt
 *.txt
 /plots
+/logs
+/data

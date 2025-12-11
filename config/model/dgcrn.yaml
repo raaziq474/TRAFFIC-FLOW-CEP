@@ -1,0 +1,16 @@
+# @package _global_
+
+#### Model params #############################################################
+model:
+  name: dgcrn
+  hparams:
+    gcn_depth: 2
+    dropout: 0.3
+    subgraph_size: 20
+    node_dim: 40
+    middle_dim: 2
+    rnn_size: 64
+    hyperGNN_dim: 16
+
+dataset:
+  None: None
