@@ -21,7 +21,6 @@ tags:
   - ${model.name}
 
 logger: null
-experiment_type: train  # train | test (not implemented yet)
 
 #### Windowing params #########################################################
 window: 12              # number of timesteps model takes as input (average traffic speed)

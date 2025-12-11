@@ -114,7 +114,7 @@ if __name__ == "__main__":
     pkl_path = download_dataset(dataset, format="pkl")
     print(f"Saved PKL to: {pkl_path}\n")
 
-    # Example 3: Loading csv
+    # Example 3: Loading csv dataset
     print("Loading CSV")
     df_csv = load_csv(dataset)
     print("Shape:", df_csv.shape)
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     print("Shape:", df_pkl.shape)
     print(df_pkl.head())
 
-    # Example 5: Loading Custom csv Dataset
+    # Example 5: Loading custom csv dataset
     df_csv = load_csv("agcrn_actuals_h2")
     print("Shape:", df_csv.shape)
     print(df_csv.head())

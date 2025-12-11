@@ -25,7 +25,7 @@ class EventClassifier:
         elif norm_speed < 0.66:
             return "moderate"
         else:
-            return "light"       # norm_speed only slightly lower than day max 
+            return "light"  # 0.6666 - 1
 
 
     @staticmethod
@@ -72,15 +72,13 @@ class EventClassifier:
         severity = EventClassifier._classify_severity(speed, day_stats)
         
         if severity is None:
-            return None # No congestion - might need to change 
+            return None
         
         duration_type = EventClassifier._classify_duration(duration_intervals)
-        #time_period = EventClassifier._classify_time_period(start_time)
         day_of_week = EventClassifier._classify_day_of_week(start_time)
         
         return {
             "severity": severity,
             "duration_type": duration_type,
-            #"time_period": time_period,
             "day_of_week": day_of_week
         }

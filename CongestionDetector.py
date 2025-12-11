@@ -210,8 +210,8 @@ class CongestionDetector:
 if __name__ == "__main__":
 
     print("Downloading/Loading dataset ...")
-    df = data_utils.load_csv("la.csv") # default inside 'data/'
-    adj = data_utils.load_pkl("la_adj.pkl")
+    df = data_utils.load_csv("la.csv")          # default dataset inside 'data/'
+    adj = data_utils.load_pkl("la_adj.pkl")     # adjacency matrix will be saved automatically from data_utils downloader
 
     print("Dataset and Adjacency Matrix Loaded")
     print(f"Dataset info: {len(df.columns)} sensors, {len(df)} time steps")
@@ -221,11 +221,12 @@ if __name__ == "__main__":
     events_df = detector.run_pipeline()
     
     SAVE_FOLDER = "data"
+    DATASET = "la"
 
     if not events_df.empty:
-        events_df.to_csv(f"{SAVE_FOLDER}/congestion_events.csv", index=False)
-        print("\nSaved events to data/congestion_events_la.csv")
+        events_df.to_csv(f"{SAVE_FOLDER}/congestion_events_{DATASET}.csv", index=False)
+        print(f"\nSaved events to {SAVE_FOLDER}/congestion_events_{DATASET}.csv")
     
     if not detector.causal_df.empty:
-        detector.causal_df.to_csv(f"{SAVE_FOLDER}/event_chains_la.csv", index=False)
-        print("Saved chains events to data/event_chains.csv")
+        detector.causal_df.to_csv(f"{SAVE_FOLDER}/event_chains_{DATASET}.csv", index=False)
+        print(f"Saved chains events to {SAVE_FOLDER}/event_chains_{DATASET}.csv")

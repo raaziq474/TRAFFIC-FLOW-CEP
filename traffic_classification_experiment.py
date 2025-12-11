@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix, f1_score, accuracy_score
 from hydra import initialize, compose
@@ -16,9 +16,21 @@ from models.GWNetClassifier import GWNetClassifier
 from models.D2stgnn import D2STGNN
 from models.DgcrnClassifier import DGCRN_Classifier
 import data_utils
-from logging import Logger  
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+def get_model(model_name, num_nodes, num_classes, cfg, device):
+
+    if model_name == 'tcn':
+        return MultiSensorTCN(num_nodes=num_nodes, num_classes=num_classes, **cfg.model.hparams).to(device)
+    elif model_name == 'gwnet':
+        return GWNetClassifier(device=device, num_nodes=num_nodes, num_classes=num_classes, **cfg.model.hparams).to(device)
+    elif model_name == 'dgcrn':
+        return DGCRN_Classifier(num_nodes=num_nodes, num_classes=num_classes, device=device, **cfg.model.hparams).to(device)
+    elif model_name == 'd2stgnn':   # Not Implemented Properly !!!
+        return D2STGNN(num_nodes=num_nodes, num_classes=num_classes).to(device)
+    else:
+        raise NotImplementedError(f"Model Not Implemented: {model_name}")
 
 
 # build configuration tree from yaml config 
@@ -27,13 +39,12 @@ initialize(config_path=config_dir, version_base=None)
 cfg = compose(config_name="default")
 print(OmegaConf.to_yaml(cfg))
 
-
 dataset = cfg.dataset
 model_name = cfg.model.name
 
 
 print(f"Generating Labelled Dataset...")
-df = data_utils.load_csv("la.csv")  # defualt path is data
+df = data_utils.load_csv("la.csv")                 # defualt path is data
 gen = EventLabelGenerator("data/congestion_events_la.csv", dataset=df)
 speeds, labels, sensor_ids, num_classes = gen.run()
 
@@ -67,6 +78,7 @@ labels_test = labels[val_end:]
 
 print(f"\nSplit: Train {len(speeds_train)}, Val {len(speeds_val)}, Test {len(speeds_test)}")
 
+
 # Normalize data 
 scaler = StandardScaler()
 scaler.fit(speeds_train.reshape(-1, 1))
@@ -75,7 +87,6 @@ speeds_train_norm = scaler.transform(speeds_train.reshape(-1, 1)).reshape(speeds
 speeds_val_norm = scaler.transform(speeds_val.reshape(-1, 1)).reshape(speeds_val.shape)
 speeds_test_norm = scaler.transform(speeds_test.reshape(-1, 1)).reshape(speeds_test.shape)
 
-# Use normalized data for both models
 speeds_train = speeds_train_norm
 speeds_val = speeds_val_norm
 speeds_test = speeds_test_norm
@@ -92,32 +103,16 @@ loader_test = DataLoader(test_dataset, batch_size=cfg.batch_size, shuffle=False)
 
 
 # MODEL INITIALIZATION
-if model_name == 'tcn':
-    model = MultiSensorTCN(num_nodes=N, num_classes=num_classes, **cfg.model.hparams).to(device)
-
-elif model_name == 'gwnet':
-    model = GWNetClassifier(device=device,num_nodes=N,num_classes=num_classes, **cfg.model.hparams).to(device)
-
-elif model_name == 'd2stgnn':
-    model = D2STGNN(num_nodes=N,num_classes=num_classes).to(device)              # can add hparams later (model not wokring properly)
-
-elif model_name == 'dgcrn':
-        model = DGCRN_Classifier(num_nodes=N, num_classes=num_classes ,device=device, **cfg.model.hparams).to(device)
-
-else:
-    raise ValueError(f"Unknown MODEL_TYPE: {model_name}. Choose 'tcn', 'gwnet', 'dgcrn' or 'd2stgnn'")
-
-
-model_path = f"logs/{model_name}-{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-best_model_path = f"{model_path}/{model_name}.pt"
-os.makedirs(model_path, exist_ok=True)
-
+model = get_model(model_name=model_name, num_nodes=N, num_classes=num_classes, cfg=cfg, device=device)
 optimizer = torch.optim.Adam(model.parameters(), lr=cfg.optimizer.hparams.lr)
 criterion = nn.CrossEntropyLoss()
 
 best_val_loss = float("inf")
 patience_counter = 0
 
+model_path = f"logs/{model_name}-{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+best_model_path = f"{model_path}/{model_name}.pt"
+os.makedirs(model_path, exist_ok=True)
 
 def epoch_eval(model, loader, device):
     """Helper function for validation loop"""
@@ -141,9 +136,8 @@ def epoch_eval(model, loader, device):
     acc = 100.0 * (correct / total) if total > 0 else 0.0
     return mean_loss, acc
 
-# ========================
+
 # TRAINING LOOP
-# ========================
 print("\nStarting training...")
 for epoch in range(1, cfg.epochs + 1):
     model.train()
@@ -198,9 +192,8 @@ for epoch in range(1, cfg.epochs + 1):
         print("Early stopping triggered.")
         break
 
-# ========================
+
 # TESTING
-# ========================
 print("\nLoading best model for testing...")
 checkpoint = torch.load(best_model_path, map_location=device, weights_only=False)
 model.load_state_dict(checkpoint["model_state_dict"])
