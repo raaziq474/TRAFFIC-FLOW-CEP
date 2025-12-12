@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 import torch
 import data_utils
 
+
 class EventLabelGenerator:
 
     def __init__(self, events_csv, dataset=None):

@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F_func
 import math
 
-
 # NOT PROPPER IMPLEMNTATION !!!
 # MODEL WORKS BUT ESTIMATION GATE NOT IMPLEMENTED
 

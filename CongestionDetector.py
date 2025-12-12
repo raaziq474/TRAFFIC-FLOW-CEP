@@ -1,9 +1,8 @@
 import pandas as pd
 import numpy as np
-from typing import Dict, Any, List
+from tqdm import tqdm
 from EventClassifier import EventClassifier
 from HistoricalAverage import HistoricalAverageTraffic
-from tqdm import tqdm
 import CongestionChainDetector
 import data_utils
 
@@ -12,7 +11,7 @@ class CongestionDetector:
 
     def __init__(self, data: pd.DataFrame, adj_matrix: np.ndarray = None, min_duration: int = 15):
         """
-        Initializes the detector with the speed data.
+        Initializes the congestion detector with the speed data and trainign HA model.
         
         Args:
             data: DataFrame where index is time and columns are sensor IDs (speed data).
@@ -20,6 +19,7 @@ class CongestionDetector:
             min_duration: Minimum number of consecutive intervals (in minutes) 
                           to qualify as a congestion event.
         """
+
         self.df = data
         self.adj_matrix = adj_matrix
         self.min_duration = min_duration
@@ -44,10 +44,13 @@ class CongestionDetector:
 
             labels = pd.Series(labels, index=series.index)
 
-            # Find contiguous congestion groups
+            # Find continuous congestion groups
             mask = labels.notna()
             if mask.any():
+                
+                # Event duration
                 change_points = (labels != labels.shift()).cumsum()
+
                 for _, group in labels[mask].groupby(change_points[mask]):
 
                     # if len(group) < (self.min_duration // 5):
@@ -57,19 +60,18 @@ class CongestionDetector:
                     end_time = group.index[-1]
                     event_type = group.iloc[0]
 
-                    # Build final event dict via EventClassifier
+                    # Build final event classification dict
                     event_dict = EventClassifier.build_event(series, sensor_id, start_time, end_time, event_type, self.predictor)
 
                     if event_dict:
                         events.append(event_dict)
 
             pbar.update(1)
-
         pbar.close()
+
         self.events_df = pd.DataFrame(events)
         print(f"Detected {len(self.events_df)} congestion events.")
         return self.events_df
-
 
 
     def analyze_events(self):
@@ -129,8 +131,7 @@ class CongestionDetector:
             time_window_minutes=time_window_minutes,
             min_connectivity=min_connectivity
         )
-        
-        # Analyze chains: Not useful at the moment
+
         if not causal_df.empty:
             chains = CongestionChainDetector.analyze_causal_chains(causal_df, max_depth=5)   # length of chain limited to dfs max depth
             print(f"\nFound {len(chains)} causal chains")      
@@ -172,7 +173,7 @@ if __name__ == "__main__":
     DATASET = "la"
 
     if not events_df.empty:
-        events_df.to_csv(f"{SAVE_FOLDER}/congestion_events_{DATASET}(2).csv", index=False)
+        events_df.to_csv(f"{SAVE_FOLDER}/congestion_events_{DATASET}.csv", index=False)
         print(f"\nSaved events to {SAVE_FOLDER}/congestion_events_{DATASET}.csv")
     
     if not detector.causal_df.empty:

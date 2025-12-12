@@ -200,7 +200,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Load and test a trained spatio-temporal model on traffic congestion classification")
     parser.add_argument("model_path", type=str, 
-                        help="Path to the directory containing config.yaml and the model checkpoint (e.g., logs/dgcrn-2025-12-11_16-00-00). Path must be relative")
+                        help="Path to the directory containing config.yaml and the model checkpoint (e.g., logs/dgcrn-2025-12-11_12-12-33/dgcrn.pt). Path must be relative")
     
     parser.add_argument("--dataset", type=str, default="la.csv",
                         help="Name of the raw traffic speeed dataset file (e.g., la.csv)")
@@ -210,8 +210,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Usage: python traffic_inference.py logs/dgcrn-2025-12-11_16-00-00/dgcrn.pt
+    # Usage: python traffic_inference.py logs/dgcrn-2025-12-11_12-12-33/dgcrn.pt
     # --dataset la.csv [defualt/optional]
-    # --events_dataset [optionaloptional]
+    # --events_dataset data/congestion_events_la.csv [optionaloptional]
     # model selscted will be from config located in that folder
     main(args.model_path, args.dataset, args.events_dataset)

@@ -51,7 +51,7 @@ model_name = cfg.model.name
 
 print(f"Generating Labelled Dataset...")
 df = data_utils.load_csv("la.csv")                 # defualt path is data
-gen = EventLabelGenerator("data/congestion_events_la.csv", dataset=df)
+gen = EventLabelGenerator("data/congestion_events_la.csv", dataset=df)  # congestion dataset passed here
 speeds, labels, sensor_ids, num_classes = gen.run()
 
 T, N = speeds.shape

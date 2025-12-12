@@ -2,6 +2,10 @@ from pathlib import Path
 import pandas as pd
 import pickle
 
+#################
+# Dataset downloader and dataloader module
+#################
+
 
 DEFAULT_DATA_DIR = Path("data")
 
@@ -125,7 +129,8 @@ if __name__ == "__main__":
     print("Shape:", df_pkl.shape)
     print(df_pkl.head())
 
-    # Example 5: Loading custom csv dataset
+    # Example 5: Loading custom csv dataset (predictions from agcrn)
+    # On metr-la test partition
     df_csv = load_csv("agcrn_actuals_h2")
     print("Shape:", df_csv.shape)
     print(df_csv.head())
