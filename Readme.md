@@ -32,28 +32,27 @@ which is an optional library. Downloaded datasets do not require tsl to load, bu
 ## Data layout
 
 - `data/la.csv`, `data/la.pkl`, `data/la_adj.pkl`: Los Angeles sensor data and adjacency.
-- `data/congestion_events_la.csv` (and variants): pre-extracted congestion events / chains.
+- `data/congestion_events_la.csv`: pre-extracted congestion events / chains.
 - `data/event_chains.csv`: event chain examples used by chain detector.
 
 If you want to run experiments on your own data, follow the CSV formats used in `data/` as templates.
 
-## Key modules (brief)
+## Key modules
 
 - `CongestionDetector.py` — single-sensor or multi-sensor congestion detection logic and helpers.
 - `CongestionChainDetector.py` — builds chains of congestion events using adjacency/distance heuristics.
 - `CongestionEventDataset.py` — dataset class that prepares sliding-window inputs and labels for classifiers.
 - `HistoricalAverage.py` — a simple baseline model using historical averages (seasonal baseline).
-- `EventClassifier.py` — wrapper to run classifiers/train/evaluate with unified interface.
-- `data_utils.py` — common data loading and processing utilities.
+- `EventClassifier.py` — evaluate and classify congestion events
+- `data_utils.py` — data loading, downloading and processing utilities.
 - `traffic_classification_experiment.py` — script that runs full train/validation experiments.
 - `traffic_inference.py` — script for running inference using a trained model checkpoint.
 
-Models (in `models/`):
+Models available for use (in `models/`):
 
-- `GWNetClassifier.py` / `gwnet_modules.py` — Graph WaveNet implementation and classification wrapper.
-- `DgcrnClassifier.py` / `dgcrn_modules.py` — Diffusion Graph Convolutional Recurrent Network and classification wrapper.
-- `TCNClassifier.py` — Temporal Convolutional Network and classification wrapper.
-
+- `GWNetClassifier.py` — Graph WaveNet Classification Model
+- `DgcrnClassifier.py`— Diffusion Graph Convolutional Recurrent Network Classification Model
+- `TCNClassifier.py` — Temporal Convolutional Network Classification Model
 
 ## Creating a congesestion event datasets and chains (example)
 
@@ -61,8 +60,12 @@ Firstly you should download the dataset if not downlaoded already.
 The distance predefined adjacency matrix can also be downloaded, but is only used when detecting event chains,
 so it is optional. 
 
-Simply run congestion detector using its main funtion while specifying the input dataset, and its output will be an events dataset in the data folder. The patterns used to classify and label these events of interested are located inside EventVlassifier.py
+Simply run congestion detector using its main funtion while specifying the input dataset, and its output will be an events dataset in the data folder. The patterns used to classify and label these events of interested are located inside EventClassifier.py
 
+```powershell
+# Generate congestion events dataset using EventClassifier.py classifications 
+python CongestionDetector.py
+```
 The events chain dataset can also be generated, immediately after (uncomment analyze_chains() in the run function)
 
 ## Training a model
@@ -71,11 +74,11 @@ Configs for selecting models, training params and hyper parameters are located i
 as a tree, where `default.yaml` contains the main experiment configureation and model configs contain model specifc hyperparamters and other override options.
 
 Train / run an experiment will use the model and configuration selected in the config/default.yaml and the datasets must be passed to EventsLabelGenerator which will generate the dataset with input output pairs (speed to labels)
+
 ```powershell
 # Train or run an experiment defined in traffic_classification_experiment.py
 python traffic_classification_experiment.py
 ```
-
 
 ## Running inference (example)
 
