@@ -19,6 +19,12 @@ import data_utils
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
+#################
+# Training / Evaluation module for traffic classification models
+#################
+
+
 def get_model(model_name, num_nodes, num_classes, cfg, device):
 
     if model_name == 'tcn':

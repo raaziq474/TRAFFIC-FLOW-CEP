@@ -1,10 +1,9 @@
 from pathlib import Path
 import pandas as pd
-import numpy as np
 import pickle
 
-DEFAULT_DATA_DIR = Path("data")
 
+DEFAULT_DATA_DIR = Path("data")
 
 def _get_file_path(filename: str, format: str = "csv", data_dir: Path = DEFAULT_DATA_DIR) -> Path:
     """

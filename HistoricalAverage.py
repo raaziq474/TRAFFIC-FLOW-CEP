@@ -5,6 +5,11 @@ import numpy as np
 from tqdm import tqdm
 import data_utils
 
+
+#################
+# Historical Average Model for traffic regression
+#################
+
 class HistoricalAverageTraffic:
     """Traffic Predcition based on historical day-of-week and time-of-day averages."""
     
@@ -41,7 +46,7 @@ class HistoricalAverageTraffic:
         
         total_iterations = len(self.df.columns) * len(self.df.index)    # sensors * timesteps 
         
-        print("\nTraining ...")
+        print("\nTraining Historical Average Model...")
         pbar = tqdm(total=total_iterations, desc="Segmenting Sensors", mininterval=0.5)
         
         for sensor_id in self.df.columns:

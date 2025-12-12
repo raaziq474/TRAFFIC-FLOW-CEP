@@ -41,7 +41,7 @@ class EventLabelGenerator:
         self.sensor_id_to_idx = {str(sid): idx for idx, sid in enumerate(self.sensor_ids)}
 
     def load_events(self):
-        """Load congestion-style events and build class mapping."""
+        """Load congestion events and build class mapping between labels and indices"""
 
         events = pd.read_csv(self.events_csv, parse_dates=["start_time", "end_time"])
         
@@ -53,14 +53,17 @@ class EventLabelGenerator:
         elif event_types == "type":
             events["class_label"] = events["type_detected"]
         
+        # can add other combinations 
+
         # Map event classes
         self.class_to_idx = {c: i for i, c in enumerate(events["class_label"].unique())}
         no_event_label = "no_event"
         no_event_id = len(self.class_to_idx)
+
         self.class_to_idx[no_event_label] = no_event_id
         events["label_id"] = events["class_label"].map(self.class_to_idx)
         
-        # Filter out events for sensors not in dataset (optimization)
+        # Filter out events for sensors not in dataset
         events["sensor_id_str"] = events["sensor_id"].astype(str)
         events = events[events["sensor_id_str"].isin(self.sensor_id_to_idx)].copy()
         

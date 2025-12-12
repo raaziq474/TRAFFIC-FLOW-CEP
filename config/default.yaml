@@ -6,7 +6,7 @@ defaults:
 #### Need to rework this 
 hydra:
   run:
-    dir: logs/${model.name}/${dataset.name}/${now:%Y-%m-%d-%H-%M-%S}
+    dir: logs/${model.name}/${dataset.name}/${now:%Y-%m-%d-%H-%M-%S} # is not model saving directory
 
 #seed: 42
 
@@ -28,7 +28,7 @@ horizon: 12             # model will only predict a single time step at horizon 
 
 #### Training params ##########################################################
 epochs: 30
-patience: 3
+patience: 5
 batch_size: 64
 grad_clip_val: 5
 scale_target: True      # Normalization 
@@ -37,5 +37,5 @@ scale_target: True      # Normalization
 optimizer:
   name: Adam
   hparams:
-    lr: 0.002
+    lr: 0.001
     weight_decay: 0

@@ -4,9 +4,17 @@ import torch.nn.functional as F
 
 
 class GWNetClassifier(nn.Module):
-    def __init__(self, device, num_nodes, num_classes, **kwargs):
-        super().__init__()
+    """
+    GWNET adapted for classification, reuses GCN and TCN
+    from the parent GWNET, but modifies final layer.
+    
+    Input: (B, T, N) - batch, time steps, nodes/sensors
+    Output: (B, N, num_classes) - batch, nodes, classification logits
+    """
 
+    def __init__(self, device, num_nodes, num_classes, **kwargs):
+
+        super().__init__()          
         self.gwnet = gwnet(
             device=device,
             num_nodes=num_nodes,
@@ -23,10 +31,9 @@ class GWNetClassifier(nn.Module):
         self.end_conv_2_cls = nn.Conv2d(in_channels=end_channels, out_channels=num_classes, kernel_size=(1,1))
         
     def forward(self, input):
-        # Reshape input from (B, T, N) -> (B, 1, N, T)  - only 1 input channel is needed 
-        x = input.permute(0, 2, 1).unsqueeze(1) 
-        
+
         # First Pass through GWNet normally, skip layer before sequence forecasting is returned 
+        x = input.permute(0, 2, 1).unsqueeze(1) 
         skip = self.gwnet(x)
         
         # Classification Block

@@ -3,16 +3,16 @@ import torch
 import torch.nn as nn
 from models.dgcrn_modules import DGCRN
 
+
 class DGCRN_Classifier(DGCRN):
     """
-    DGCRN adapted for the MultiSensorTCN interface by extending the original DGCRN.
+    DGCRN adapted for classification, reuses GCN and GRU step logic
+    from the parent DGCRN, but modifies final layer.
     
     Input: (B, T, N) - batch, time steps, nodes/sensors
     Output: (B, N, num_classes) - batch, nodes, classification logits
-    
-    This class reuses all GCN and GRU-like step logic from the parent DGCRN,
-    but adapts the input/output and removes the decoder for classification.
     """
+
     def __init__(self,
                  num_nodes,
                  num_classes,
@@ -35,7 +35,7 @@ class DGCRN_Classifier(DGCRN):
         else:
             predefined_A_init = predefined_A
 
-        # DGCRN expects a defined seq_length, defualt is 12
+        # DGCRN expects a defined seq_length, defualt is 12 but only 1 is used 
         seq_length = seq_length if seq_length is not None else 12 
 
         super(DGCRN_Classifier, self).__init__(
@@ -48,13 +48,13 @@ class DGCRN_Classifier(DGCRN):
             node_dim=node_dim,
             middle_dim=middle_dim,
             seq_length=seq_length,
-            in_dim=1, # Single feature input (e.g., speed)
-            out_dim=1, # Placeholder, will be replaced
+            in_dim=1,                       # Single feature input (e.g., speed)
+            out_dim=1,                      # Placeholder, will be replaced
             list_weight=list_weight,
             tanhalpha=tanhalpha,
             rnn_size=rnn_size,
             hyperGNN_dim=hyperGNN_dim
-        )
+        )   # couldjust use **kwargs :|
         
         # Classification layer
         self.num_classes = num_classes
@@ -64,16 +64,12 @@ class DGCRN_Classifier(DGCRN):
         self.use_curriculum_learning = False
         
 
-
     def forward(self, x):
-        """
-        Input: x of shape (B, T, N) - Batch, Time, Nodes
-        Output: logits of shape (B, N, num_classes)
-        """
+
         B, T, N = x.shape
         self.seq_length = T
         
-        # 1. Transform input to base DGCRN's expected format: (B, in_dim, N, T)
+        # Transform input to base DGCRN's expected format: (B, in_dim, N, T)
         x_reshaped = x.unsqueeze(-1)
         x_transformed = x_reshaped.permute(0, 3, 2, 1)
         
@@ -82,21 +78,21 @@ class DGCRN_Classifier(DGCRN):
 
         for i in range(T):
             
-            x_t = x[:, i, :]                # Slice X to get one time step: (B, N)
-            x_step_input = x_t.unsqueeze(1) # (B, N) -> (B, 1, N)
+            x_t = x[:, i, :]                    # Slice X to get one time step: (B, N)
+            x_step_input = x_t.unsqueeze(1)     # (B, N) -> (B, 1, N)
 
-            # Call the inherited step method
+            # Use defualt DGCRN step
             Hidden_State, Cell_State = self.step(
-                x_step_input,  # Pass the 3D tensor (B, 1, N)
+                x_step_input,
                 Hidden_State, 
                 Cell_State,
                 self.predefined_A, 
-                'encoder', # Assuming you still pass the type
+                'encoder',
                 idx=None,
                 i=i
             )
         
-        # Final Classification Layer
+        # Pass Hidden state to Final Classification Layer
         Hidden_State_reshaped = Hidden_State.view(B, N, self.hidden_size)
         logits = self.fc_final(Hidden_State_reshaped)
         

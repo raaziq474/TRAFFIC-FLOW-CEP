@@ -29,99 +29,47 @@ class CongestionDetector:
         # Train predictor once - can be reused anywhere, once trained(computed)
         self.predictor = HistoricalAverageTraffic(self.df)
         self.predictor.train()
-
-        
-    def _add_event(self, events: List[Dict[str, Any]], sensor_id: str, start_time: pd.Timestamp, end_time: pd.Timestamp, event_type: str):
-            """Records a congestion event using the normalized structure."""
-            
-            event_series = self.df.loc[start_time:end_time, sensor_id]
-            duration_intervals = len(event_series)
-
-            avg_speed = event_series.mean()                     
-
-            day_stats = self.predictor.predict_day_distribution(start_time, sensor_id)
-            
-
-            # Assuming EventClassifier uses the avg_speed and day_stats to refine the classification
-            classification = EventClassifier.classify_event_types(avg_speed, duration_intervals, start_time, day_stats) 
-            
-            if classification:
-
-                event_data = {
-                    "sensor_id": sensor_id,
-                    "start_time": start_time,
-                    "end_time": end_time,
-                    "avg_speed": avg_speed,
-                    "duration_minutes": duration_intervals * 5, 
-                    "type_detected": event_type, 
-                }
-                
-                # Merge classifications with event data
-                event_data.update(classification) 
-                events.append(event_data)
-
+ 
 
     def detect_events(self) -> pd.DataFrame:
-        """Detects events where speed is below historical thresholds for each sensor."""
-
         events = []
-
         pbar = tqdm(total=len(self.df.columns), desc="Detecting Events", unit="Sensor")
+
         for sensor_id in self.df.columns:
+            series = self.df[sensor_id]
 
-            # is_congested now stores the type of congestion or None
-            congestion_type_list = [] 
+            labels = []
+            for timestamp, speed in series.items():
+                labels.append(EventClassifier._classify_congestion_type(speed, timestamp, sensor_id, self.predictor))
 
-            for timestamp, speed in zip(self.df.index, self.df[sensor_id]):
+            labels = pd.Series(labels, index=series.index)
 
-                daly_sensor_stats = self.predictor.predict_day_distribution(timestamp, sensor_id)
-                timeperiod_stats = self.predictor.predict_timestep_distribution(timestamp, timestamp, sensor_id)
+            # Find contiguous congestion groups
+            mask = labels.notna()
+            if mask.any():
+                change_points = (labels != labels.shift()).cumsum()
+                for _, group in labels[mask].groupby(change_points[mask]):
 
-                daily_sensor_mean = daly_sensor_stats["mean"]
-                
-                tp_sensor_mean = timeperiod_stats["mean"]
-                tp_sensor_stdev = timeperiod_stats["stdev"]
-                
-                # 1. Random/Off-Peak Congestion
-                random_threshold = tp_sensor_mean - tp_sensor_stdev
-                if speed < random_threshold:
-                    congestion_type_list.append("random") 
-                
-                # 2. Peak Congestion (Expected congestion)
-                elif speed < daily_sensor_mean:
-                    congestion_type_list.append("peak") 
-                
-                # 3. No Congestion
-                else:
-                    congestion_type_list.append(None)
+                    # if len(group) < (self.min_duration // 5):
+                    #     continue
 
-            # Group consecutive periods by BOTH presence of congestion AND type of congestion
-            # Ensures that type changes create new groups
-            congestion_series = pd.Series(congestion_type_list, index=self.df.index)
-            type_changes = (congestion_series != congestion_series.shift()).cumsum()
-            
-            # Filter to only congested periods (not None)
-            congested_mask = congestion_series.notna()
-            congested_groups = congestion_series[congested_mask].groupby(type_changes[congested_mask])
+                    start_time = group.index[0]
+                    end_time = group.index[-1]
+                    event_type = group.iloc[0]
 
-            # Process each continuous congestion period of the same type
-            for group_id, group in congested_groups:
-                start_time = group.index[0]
-                end_time = group.index[-1]
-                
-                # if len(group) < (self.min_duration / 5):
-                #     continue
+                    # Build final event dict via EventClassifier
+                    event_dict = EventClassifier.build_event(series, sensor_id, start_time, end_time, event_type, self.predictor)
 
-                event_type = group.iloc[0]      # All values in the group should be the same type
-                self._add_event(events, sensor_id, start_time, end_time, event_type)
+                    if event_dict:
+                        events.append(event_dict)
 
             pbar.update(1)
 
         pbar.close()
         self.events_df = pd.DataFrame(events)
         print(f"Detected {len(self.events_df)} congestion events.")
-
         return self.events_df
+
 
 
     def analyze_events(self):
@@ -224,7 +172,7 @@ if __name__ == "__main__":
     DATASET = "la"
 
     if not events_df.empty:
-        events_df.to_csv(f"{SAVE_FOLDER}/congestion_events_{DATASET}.csv", index=False)
+        events_df.to_csv(f"{SAVE_FOLDER}/congestion_events_{DATASET}(2).csv", index=False)
         print(f"\nSaved events to {SAVE_FOLDER}/congestion_events_{DATASET}.csv")
     
     if not detector.causal_df.empty:

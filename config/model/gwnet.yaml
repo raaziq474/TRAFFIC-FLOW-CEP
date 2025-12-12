@@ -14,11 +14,6 @@ model:
     kernel_size: 2
 
 #### Config overrides ######################################################### 
-#### Still need to implement predefined adj for classifaction : support = [adj]
+#### Still need to implement predefined adj for classifaction : supports = [adj]
 dataset:
-  connectivity:
-    threshold: 0.1
-    include_self: False
-    normalize_axis: 1
-    layout: edge_index      # csr == random adjacecny init | edge_index == distance predefined
-
+  use_adj: False

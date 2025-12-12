@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import classification_report, confusion_matrix, f1_score, accuracy_score
+from sklearn.metrics import classification_report, confusion_matrix, f1_score, accuracy_score, recall_score
 from omegaconf import OmegaConf
 from hydra import initialize, compose
 
@@ -21,7 +21,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 #################
-# Inference module for traffic classification  models
+# Inference module for trained traffic classification models
 #################
 
 
@@ -141,13 +141,13 @@ def main(model_path: str, dataset: str, events_dataset: str):
 
     print(f"\nTest Loss: {test_loss:.4f}, Test Acc: {test_acc:.2f}%")
 
-    # OVERALL RESULTS
+    # Overall Results
     num_classes_report = len(idx_to_class)
     target_names = [idx_to_class[i] for i in range(num_classes_report)]
 
     test_results_path = os.path.join(model_dir, f"inference_results.txt")
     with open(test_results_path, "w+") as f:
-        f.write("=== FINAL INFERENCE RESULTS ===\n")
+        f.write("INFERENCE RESULTS")
         f.write(f"Model Directory: {model_path}\n")
         f.write(f"Validation Loss (from training): {best_val_loss:.4f}\n")
         f.write(f"Validation Accuracy (from training): {best_val_acc:.4f}%\n")
@@ -155,7 +155,6 @@ def main(model_path: str, dataset: str, events_dataset: str):
         f.write(f"Test Accuracy: {test_acc:.4f}%\n\n")
 
         f.write(class_dist) 
-
         f.write("\nOverall Classification Report:\n")
         f.write(classification_report(y_true_overall, y_pred_overall, target_names=target_names, digits=3, zero_division=0))
         
@@ -180,13 +179,15 @@ def main(model_path: str, dataset: str, events_dataset: str):
         sensor_loss = criterion_sensor(logits_t, labels_t).item()
         f1_macro = f1_score(y_true, y_pred, average="macro", zero_division=0)
         acc_sensor = 100.0 * (y_pred == y_true).mean()
+        recall_macro = recall_score(y_true, y_pred, average="macro", zero_division=0)
 
         results.append({
             "sensor_idx": sensor_idx,
             "sensor_id": sensor_ids[sensor_idx],
             "sensor_test_loss": sensor_loss,
             "sensor_test_acc": acc_sensor,
-            "sensor_f1_macro": f1_macro
+            "sensor_f1_macro": f1_macro,
+            "sensor_recall_macro": recall_macro
         })
 
     summary_df = pd.DataFrame(results)
@@ -208,4 +209,9 @@ if __name__ == "__main__":
                         help="Name of the events dataset CSV file (e.g., congestion_events_la.csv)")
 
     args = parser.parse_args()
+
+    # Usage: python traffic_inference.py logs/dgcrn-2025-12-11_16-00-00/dgcrn.pt
+    # --dataset la.csv [defualt/optional]
+    # --events_dataset [optionaloptional]
+    # model selscted will be from config located in that folder
     main(args.model_path, args.dataset, args.events_dataset)

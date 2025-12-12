@@ -4,6 +4,9 @@ import torch.nn.functional as F_func
 import math
 
 
+# NOT PROPPER IMPLEMNTATION !!!
+# MODEL WORKS BUT ESTIMATION GATE NOT IMPLEMENTED
+
 class DynamicGraphConstructor(nn.Module):
     def __init__(self, num_nodes, hidden_dim, k=10):
         super().__init__()
@@ -185,11 +188,9 @@ class D2STGNN(nn.Module):
             nn.Linear(hidden_dim, 1)
         )
 
-        # project T_in -> T_out
         self.temp_conv_T_proj = None
 
     def forward(self, x):
-        # x: (B, T_in, N)
         B, T_in, N = x.shape
         device = x.device
 
@@ -201,26 +202,21 @@ class D2STGNN(nn.Module):
                 kernel_size=1
             ).to(device)
 
-        # Graph
         adj = self.graph_constructor(device=device)
 
         # Input embedding
         x = x.unsqueeze(-1)
-        x = self.input_proj(x)        # (B, T_in, N, F)
-        x = x.permute(0, 3, 1, 2)     # (B, F, T_in, N)
+        x = self.input_proj(x)
+        x = x.permute(0, 3, 1, 2)
 
-        # Blocks
         for block in self.blocks:
             x = block(x, adj)
 
-        # Map F -> 1
-        x = x.permute(0, 2, 3, 1)                # (B, T_in, N, F)
+        x = x.permute(0, 2, 3, 1)
 
         # Use only last timestep for classification
-        x = x[:, -1, :, :]                      # (B, N, F)
-
-        # Fully connected classifier
-        x = self.classifier(x)                  # (B, N, num_classes)
+        x = x[:, -1, :, :]
+        x = self.classifier(x)
 
         return x
 
